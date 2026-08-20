@@ -20,7 +20,7 @@ A fase **HUB-001 — Auditoria e Reconciliação** foi concluída. A baseline de
 | Área | Estado |
 |---|---|
 | Baseline de código | ✅ Aprovada |
-| Testes locais | ✅ 23/23 |
+| Testes da baseline | ✅ 23/23 |
 | Worker candidato | ✅ Dry-run aprovado |
 | Pipeline de edital 7E | ✅ Preservado |
 | Planner por usuário/edital/cargo/matéria | ✅ ADD/LIST/DELETE |
@@ -33,14 +33,16 @@ A fase **HUB-001 — Auditoria e Reconciliação** foi concluída. A baseline de
 
 Veja [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) para o estado operacional atual.
 
+> **Nota de repositório:** a primeira sincronização do GitHub prioriza documentação, migrations, configuração, governança e automação. O snapshot-fonte aprovado continua sendo preservado integralmente fora desta primeira importação enquanto os módulos maiores são sincronizados sem alterar a baseline.
+
 ## Baseline canônica
 
-- **Branch de referência:** `main`
+- **Branch de referência do projeto:** `main`
 - **Baseline reconciliada:** `b3da0d8`
-- **Tag de referência:** `hub-001-r1r2-baseline`
+- **Tag lógica de referência:** `hub-001-r1r2-baseline`
 - **Sequência canônica de migrations:** `001 → 002 → 003 → 004`
 
-O snapshot V4 e as versões 7C/7E anteriores são tratados como referências históricas, não como baseline ativa.
+O snapshot V4 e as versões 7C/7E anteriores são referências históricas, não baseline ativa.
 
 ## Arquitetura
 
@@ -81,19 +83,21 @@ O planner canônico usa a identidade:
 (user_id, edital_ref, cargo_key, subject_key)
 ```
 
-## Estrutura do repositório
+## Organização do repositório
 
 ```text
 .
-├── index.html / app.js / style.css       # frontend
-├── edital-analyzer.js                    # integração da análise de edital
-├── question-bank.js                      # base/motor de questões local
-├── ebooks.js                             # módulo existente de conteúdo
-├── worker/                               # Cloudflare Worker e testes
-├── supabase/migrations/                  # migrations canônicas
+├── .github/                              # CI e templates
 ├── docs/                                 # arquitetura, status e histórico
-└── .github/                              # CI e templates de colaboração
+├── supabase/migrations/                  # migrations canônicas
+├── worker/                               # configuração, contratos e testes sincronizados
+├── app-config.js                         # configuração pública segura
+├── CONTRIBUTING.md
+├── SECURITY.md
+└── README.md
 ```
+
+Os módulos maiores do frontend e Worker são importados progressivamente a partir do snapshot aprovado, sem modificar seu conteúdo funcional durante a sincronização.
 
 ## Desenvolvimento local
 
@@ -104,11 +108,13 @@ O planner canônico usa a identidade:
 - Wrangler
 - projeto Supabase para integração real
 
-### Testes do Worker
+### Validação do Worker
+
+Quando o código-fonte completo do Worker estiver presente no checkout:
 
 ```bash
 cd worker
-npm ci
+npm install
 npm test
 npm run check
 ```
@@ -142,7 +148,7 @@ A migration histórica concorrente `202608160003_authoritative_edital` não inte
 
 ## Segurança
 
-- secrets permanecem somente no Worker/ambiente;
+- segredos permanecem somente no Worker/ambiente;
 - o frontend não deve conter `SUPABASE_SECRET_KEY` ou chaves privadas;
 - sessão de usuário usa Supabase Auth/JWT;
 - dados por usuário usam RLS;
@@ -175,8 +181,7 @@ Radar, simulados, questões, YouTube e Resend permanecem fora deste gate.
 
 ## Histórico técnico
 
-- [`HUB-001 — Auditoria e Reconciliação do HEAD`](docs/history/HUB-001_Auditoria_Reconciliacao_HEAD_2026-08-20.md)
-- [`HUB-001-R1/R2 — Entrega da baseline reconciliada`](docs/history/HUB-001-R1R2_Relatorio_de_Entrega_2026-08-20.md)
+Consulte [`docs/history/README.md`](docs/history/README.md) para a linha do tempo técnica consolidada da auditoria HUB-001 e da baseline HUB-001-R1/R2.
 
 ## Contribuição
 
