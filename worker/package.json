@@ -1,0 +1,16 @@
+{
+  "name": "concurso-hub-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.local.jsonc",
+    "deploy": "wrangler deploy",
+    "check": "wrangler deploy --dry-run",
+    "test": "node --test test/worker.test.js test/edital-pipeline.test.js test/frontend-integration.test.js test/baseline-contract.test.js",
+    "test:deploy": "node --test test/worker.test.js test/edital-pipeline.test.js test/frontend-integration.test.js test/baseline-contract.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

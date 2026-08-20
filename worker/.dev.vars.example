@@ -1,0 +1,15 @@
+# Copie este arquivo para .dev.vars. Nunca envie .dev.vars para o repositório.
+QUESTIONS_API_KEY=""
+QUESTIONS_TERMS_ACCEPTED="false"
+GEMINI_API_KEY=""
+GROQ_API_KEY=""
+GEMINI_EDITAL_MODEL="gemini-3.6-flash"
+GROQ_EDITAL_MODEL="llama-3.3-70b-versatile"
+GROQ_EXPLANATION_MODEL="llama-3.3-70b-versatile"
+GROQ_WHISPER_MODEL="whisper-large-v3-turbo"
+SUPABASE_URL="https://SEU-PROJETO.supabase.co"
+SUPABASE_PUBLISHABLE_KEY=""
+SUPABASE_SECRET_KEY=""
+
+# Após revisar o contrato da API das Questões, altere somente no seu ambiente:
+# QUESTIONS_TERMS_ACCEPTED="true"
