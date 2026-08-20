@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Concurso Hub: edital, planner, simulados e revisão em um só lugar." />
+  <title>Concurso Hub • Lucronomia</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div>
+          <strong>Concurso Hub</strong>
+          <small>por Lucronomia</small>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Navegação principal">
+        <button class="nav-item active" data-view="dashboard">Visão geral</button>
+        <button class="nav-item" data-view="edital">Resumir edital</button>
+        <button class="nav-item" data-view="radar">Radar de editais</button>
+        <button class="nav-item" data-view="planner">Planner</button>
+        <button class="nav-item" data-view="erros">Caderno de erros</button>
+        <button class="nav-item" data-view="ebook">E-books</button>
+        <button class="nav-item" data-view="dados">Dados</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="online-dot"></span>
+        <small>Dados protegidos neste navegador</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">PLATAFORMA DE ESTUDOS</p>
+          <h1 id="pageTitle">Visão geral</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="readingResume" class="reading-resume" type="button" hidden>
+            <span>CONTINUE LENDO</span>
+            <strong id="readingResumeTitle"></strong>
+          </button>
+          <div class="date-box" id="today"></div>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view active">
+        <article class="welcome-hero">
+          <div class="welcome-copy">
+            <p class="eyebrow">SUA PREPARAÇÃO, ORGANIZADA</p>
+            <h2>Do edital ao dia da prova.</h2>
+            <p>Escolha um cargo, receba seu plano e use cada erro para estudar com mais precisão.</p>
+            <button class="hero-action" data-go="edital">Analisar meu edital</button>
+          </div>
+          <div class="welcome-art" aria-hidden="true"></div>
+        </article>
+
+        <div class="stats-grid">
+          <article class="stat-card"><span>Tarefas</span><strong id="statTasks">0</strong><small>no seu ciclo</small></article>
+          <article class="stat-card"><span>Concluídas</span><strong id="statDone">0%</strong><small>do planner</small></article>
+          <article class="stat-card"><span>Questões erradas</span><strong id="statErrors">0</strong><small>para transformar</small></article>
+          <article class="stat-card"><span>Desempenho</span><strong id="statAccuracy">—</strong><small>nos simulados</small></article>
+        </div>
+
+        <div class="two-col">
+          <article class="panel">
+            <div class="panel-head">
+              <div><p class="eyebrow">FOCO</p><h2>Próximas tarefas</h2></div>
+              <button class="text-btn" data-go="planner">Abrir planner</button>
+            </div>
+            <div id="nextTasks" class="empty-state">Nenhuma tarefa cadastrada.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div><p class="eyebrow">DIAGNÓSTICO</p><h2>Seu foco agora</h2></div>
+              <button class="text-btn" data-go="erros">Ver diagnóstico</button>
+            </div>
+            <div id="dashboardFocus" class="empty-state">Conclua um simulado para receber uma recomendação.</div>
+          </article>
+        </div>
+      </section>
+
+      <section id="radar" class="view">
+        <article class="edital-intro radar-intro">
+          <div>
+            <p class="eyebrow">FONTE PÚBLICA • QUERIDO DIÁRIO</p>
+            <h2>Encontre editais, retificações e convocações.</h2>
+            <p>Use o radar para descobrir publicações municipais e confirme datas, regras e inscrições no documento oficial.</p>
+          </div>
+          <span class="privacy-pill">Radar, não fonte única</span>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">BUSCA OFICIAL</p><h2>Monitorar diários municipais</h2></div>
+            <a class="integration-help" href="https://queridodiario.ok.org.br/" target="_blank" rel="noopener noreferrer">Abrir Querido Diário ↗</a>
+          </div>
+          <form id="radarForm" class="radar-form">
+            <label class="radar-query">Palavras-chave<input id="radarQuery" value="&quot;concurso público&quot; | &quot;processo seletivo&quot;" required /></label>
+            <label>Código IBGE (opcional)<input id="radarTerritory" inputmode="numeric" maxlength="7" placeholder="Ex.: 3550308" /></label>
+            <label>Desde<input id="radarSince" type="date" /></label>
+            <label>Até<input id="radarUntil" type="date" /></label>
+            <button id="radarSearchBtn" class="primary-btn" type="submit">Buscar publicações</button>
+          </form>
+          <div id="radarStatus" class="analysis-status" aria-live="polite" hidden></div>
+        </article>
+
+        <div id="radarResults" class="radar-results">
+          <div class="empty-state">Conecte a infraestrutura e faça uma busca para iniciar o radar.</div>
+        </div>
+      </section>
+
+      <section id="edital" class="view">
+        <article class="edital-intro">
+          <div>
+            <p class="eyebrow">EDITAL SEM COMPLICAÇÃO</p>
+            <h2>Envie o PDF. Nós organizamos o essencial.</h2>
+            <p>Cargos, vagas, salário, datas, matérias e regras em blocos curtos e fáceis de consultar.</p>
+          </div>
+          <span class="privacy-pill">PDF local • texto enviado somente ao analisar com IA</span>
+        </article>
+
+        <article class="panel upload-panel">
+          <div class="panel-head upload-heading">
+            <div><p class="eyebrow">NOVO RESUMO</p><h2>Carregar edital</h2></div>
+            <small class="muted">PDF com até 50 MB</small>
+          </div>
+
+          <label id="editalDropZone" class="upload-zone" for="editalInput">
+            <input id="editalInput" type="file" accept="application/pdf,.pdf" hidden />
+            <span class="upload-icon" aria-hidden="true">↑</span>
+            <strong>Solte o edital aqui ou escolha o arquivo</strong>
+            <span>O PDF fica no navegador; apenas o texto extraído é enviado à IA configurada.</span>
+          </label>
+
+          <label class="official-source-field" for="editalSourceUrl">
+            <span>Link oficial do edital <small>(opcional)</small></span>
+            <input
+              id="editalSourceUrl"
+              type="url"
+              inputmode="url"
+              placeholder="https://instituicao.gov.br/edital.pdf"
+              autocomplete="url"
+            />
+            <small>Este endereço permite verificar retificações automaticamente ao abrir o Hub.</small>
+          </label>
+
+          <div id="editalStatus" class="analysis-status" aria-live="polite" hidden>
+            <div class="status-copy"><strong id="editalStatusTitle">Preparando análise…</strong><span id="editalStatusDetail"></span></div>
+            <div class="progress-track" aria-hidden="true"><span id="editalProgress"></span></div>
+          </div>
+          <div id="editalError" class="analysis-error" role="alert" hidden></div>
+        </article>
+
+        <div id="editalResults" class="edital-results" hidden>
+          <article class="summary-header">
+            <div>
+              <p class="eyebrow">RESUMO PRONTO</p>
+              <h2 id="summaryFileName">Edital analisado</h2>
+              <p id="summaryMeta" class="muted"></p>
+            </div>
+            <div class="summary-actions">
+              <button id="aiReviewBtn" class="ai-btn" type="button">Analisar com IA</button>
+              <button id="copySummaryBtn" class="secondary-btn" type="button">Copiar resumo</button>
+              <button id="newSummaryBtn" class="primary-btn" type="button">Novo PDF</button>
+            </div>
+          </article>
+
+          <div id="summaryNotice" class="summary-notice"></div>
+          <div id="aiReviewStatus" class="ai-review-status" aria-live="polite" hidden></div>
+
+          <article id="manualBankPanel" class="manual-bank-panel" hidden>
+            <div>
+              <p class="eyebrow">BANCA NÃO IDENTIFICADA</p>
+              <h3>Informe a organizadora da prova</h3>
+              <p>Essa confirmação será usada para filtrar questões e definir o formato dos simulados.</p>
+            </div>
+            <div class="manual-bank-form">
+              <select id="manualBankSelect" aria-label="Escolha a banca">
+                <option value="">Selecione a banca</option>
+                <option>CEBRASPE/CESPE</option>
+                <option>FGV</option>
+                <option>FCC</option>
+                <option>VUNESP</option>
+                <option>IBFC</option>
+                <option>Instituto AOCP</option>
+                <option>Instituto Quadrix</option>
+                <option>Fundação CESGRANRIO</option>
+              </select>
+              <button id="saveManualBankBtn" class="primary-btn" type="button">Confirmar banca</button>
+            </div>
+          </article>
+
+          <article class="cargo-selector">
+            <div class="cargo-selector-copy">
+              <p class="eyebrow">ESCOLHA SEU CARGO</p>
+              <h2>Qual cargo você vai disputar?</h2>
+              <p>Ao escolher, o Concurso Hub monta o planner com as matérias encontradas para esse cargo.</p>
+            </div>
+            <div id="cargoChoices" class="cargo-choices"></div>
+          </article>
+
+          <div class="summary-grid compact-summary">
+            <article class="summary-card" data-summary-section="vagas"><span class="summary-card-icon">01</span><h3>Vagas</h3><div class="summary-content"></div></article>
+            <article class="summary-card" data-summary-section="remuneracao"><span class="summary-card-icon">02</span><h3>Salário e benefícios</h3><div class="summary-content"></div></article>
+            <article class="summary-card" data-summary-section="inscricoes"><span class="summary-card-icon">03</span><h3>Inscrições</h3><div class="summary-content"></div></article>
+            <article class="summary-card" data-summary-section="prova"><span class="summary-card-icon">04</span><h3>Prova</h3><div class="summary-content"></div></article>
+            <article class="summary-card" data-summary-section="materias"><span class="summary-card-icon">05</span><h3>Matérias</h3><div class="summary-content"></div></article>
+            <article class="summary-card" data-summary-section="requisitos"><span class="summary-card-icon">06</span><h3>Requisitos</h3><div class="summary-content"></div></article>
+            <article class="summary-card" data-summary-section="etapas"><span class="summary-card-icon">07</span><h3>Etapas</h3><div class="summary-content"></div></article>
+            <article class="summary-card" data-summary-section="regras"><span class="summary-card-icon">08</span><h3>Regras</h3><div class="summary-content"></div></article>
+          </div>
+          <p class="summary-disclaimer">Resumo automático. Confirme datas, valores e regras no edital original.</p>
+        </div>
+      </section>
+
+      <section id="planner" class="view">
+        <article id="activePlan" class="active-plan" hidden>
+          <div>
+            <p class="eyebrow">PLANO ATIVO</p>
+            <h2 id="activePlanCargo"></h2>
+            <p id="activePlanMeta"></p>
+          </div>
+          <button class="secondary-btn" data-go="edital">Trocar cargo</button>
+        </article>
+
+        <article id="simulatorPanel" class="panel simulator-panel" hidden>
+          <div class="panel-head">
+            <div><p class="eyebrow">TREINO DIRECIONADO</p><h2>Simulados do seu edital</h2></div>
+            <span id="examBankBadge" class="exam-badge"></span>
+          </div>
+          <p id="simulatorGuidance" class="muted"></p>
+          <div class="question-sources">
+            <span id="questionApiStatus">Banco interno</span>
+            <a id="wqdPlannerLink" href="https://www.wqd.com.br/" target="_blank" rel="noopener noreferrer">Pesquisar também no WQD ↗</a>
+          </div>
+          <div id="subjectSimButtons" class="subject-sim-buttons"></div>
+          <div class="full-sim-row">
+            <div><strong>Simulado completo</strong><small id="fullSimDetail"></small></div>
+            <button id="fullSimBtn" class="primary-btn" type="button">Gerar prova completa</button>
+          </div>
+        </article>
+
+        <div class="planner-layout">
+          <article class="panel">
+            <div class="panel-head"><div><p class="eyebrow">PLANEJAMENTO</p><h2>Adicionar tarefa</h2></div></div>
+            <form id="taskForm" class="form-grid">
+              <label>Matéria<input id="taskSubject" required placeholder="Ex.: Matemática" /></label>
+              <label>Assunto<input id="taskTopic" required placeholder="Ex.: Porcentagem" /></label>
+              <label>Data<input id="taskDate" type="date" required /></label>
+              <label>Tempo previsto (min)<input id="taskMinutes" type="number" min="5" step="5" value="60" required /></label>
+              <label class="wide">Tipo<select id="taskType"><option>Teoria</option><option>Questões</option><option>Revisão</option><option>Simulado</option></select></label>
+              <button class="primary-btn wide" type="submit">Adicionar ao planner</button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div><p class="eyebrow">ROTINA</p><h2>Minhas tarefas</h2></div>
+              <select id="taskFilter" class="compact-select"><option value="all">Todas</option><option value="pending">Pendentes</option><option value="done">Concluídas</option></select>
+            </div>
+            <div id="taskList" class="list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="simulados" class="view">
+        <div id="simulationStart" class="simulation-shell">
+          <article class="simulation-head">
+            <div><p class="eyebrow">SIMULADO</p><h2 id="simulationTitle"></h2><p id="simulationMeta"></p></div>
+            <button id="exitSimulationBtn" class="secondary-btn" type="button">Sair</button>
+          </article>
+          <div id="simulationProgress" class="question-progress"></div>
+          <article id="questionCard" class="question-card"></article>
+          <div class="simulation-nav">
+            <button id="previousQuestionBtn" class="secondary-btn" type="button">Anterior</button>
+            <button id="nextQuestionBtn" class="primary-btn" type="button">Próxima</button>
+            <button id="finishSimulationBtn" class="primary-btn" type="button" hidden>Finalizar simulado</button>
+          </div>
+        </div>
+
+        <div id="simulationResult" class="simulation-result" hidden>
+          <article class="result-hero">
+            <p class="eyebrow">RESULTADO</p>
+            <strong id="resultScore">0%</strong>
+            <h2 id="resultHeadline"></h2>
+            <p id="resultSummary"></p>
+          </article>
+          <div id="resultSubjects" class="result-subjects"></div>
+          <div class="result-actions">
+            <button class="secondary-btn" data-go="erros">Ver caderno de erros</button>
+            <button class="primary-btn" data-go="planner">Voltar ao planner</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="erros" class="view">
+        <article class="diagnosis-panel">
+          <div class="panel-head"><div><p class="eyebrow">DIAGNÓSTICO DE DESEMPENHO</p><h2>Onde focar agora</h2></div></div>
+          <div id="performanceDiagnosis" class="empty-state">Conclua simulados para descobrir seus pontos fortes e fracos.</div>
+        </article>
+
+        <div class="two-col error-layout">
+          <article class="panel">
+            <div class="panel-head"><div><p class="eyebrow">APRENDIZADO</p><h2>Registrar questão errada</h2></div></div>
+            <form id="errorForm" class="form-grid">
+              <label>Matéria<input id="errorSubject" required placeholder="Ex.: Português" /></label>
+              <label>Assunto<input id="errorTopic" required placeholder="Ex.: Crase" /></label>
+              <label>Tipo de erro<select id="errorType"><option>Falta de conteúdo</option><option>Interpretação</option><option>Erro de cálculo</option><option>Distração</option><option>Chute</option></select></label>
+              <label>Revisar em<input id="errorReviewDate" type="date" required /></label>
+              <label class="wide">Observação<textarea id="errorNote" rows="3" placeholder="O que aconteceu e o que devo lembrar?"></textarea></label>
+              <button class="primary-btn wide" type="submit">Salvar no caderno de erros</button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><p class="eyebrow">HISTÓRICO</p><h2>Erros registrados</h2></div></div>
+            <div id="errorList" class="list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="ebook" class="view">
+        <div id="ebookLibraryView">
+          <article class="ebook-hero">
+            <div><p class="eyebrow">BIBLIOTECA CONCURSO HUB</p><h2>Guias para estudar com método.</h2><p>Conteúdo direto, profissional e aplicável à sua rotina.</p></div>
+            <span>15 capítulos</span>
+          </article>
+          <div id="ebookLibrary" class="ebook-library"></div>
+        </div>
+
+        <div id="ebookReader" class="ebook-reader" hidden>
+          <header class="reader-head">
+            <button id="closeReaderBtn" class="secondary-btn" type="button">← Biblioteca</button>
+            <div><p class="eyebrow" id="readerBookLabel"></p><h2 id="readerChapterTitle"></h2></div>
+            <span id="readerProgressLabel"></span>
+          </header>
+          <div class="reader-layout">
+            <aside id="readerChapters" class="reader-chapters"></aside>
+            <article id="readerContent" class="reader-content"></article>
+          </div>
+          <div class="reader-nav">
+            <button id="readerPrevBtn" class="secondary-btn" type="button">Capítulo anterior</button>
+            <button id="readerNextBtn" class="primary-btn" type="button">Próximo capítulo</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="dados" class="view">
+        <article class="panel integrations-panel">
+          <div class="panel-head"><div><p class="eyebrow">INFRAESTRUTURA SEGURA</p><h2>Worker, IA e banco de questões</h2></div></div>
+          <p class="muted">Em produção, todas as chaves ficam no Cloudflare Worker. Os campos de chave abaixo permanecem apenas como contingência para o modo local antigo.</p>
+
+          <div class="backend-status-grid">
+            <div><span>API segura</span><strong id="workerStatus">Conferindo…</strong></div>
+            <div><span>Supabase</span><strong id="supabaseStatus">Conferindo…</strong></div>
+            <div><span>Groq / fallback</span><strong id="groqStatus">Conferindo…</strong></div>
+          </div>
+
+          <div class="integration-grid">
+            <section class="integration-card">
+              <div class="integration-card-head"><span class="integration-mark">AI</span><div><strong>Gemini</strong><small>Extração factual do edital</small></div></div>
+              <p>O Worker prefere Gemini para extrair fatos e páginas do PDF. A chave temporária abaixo mantém o modo local; dados ausentes permanecem nulos.</p>
+              <label>Chave Gemini<input id="geminiKeyInput" type="password" autocomplete="off" placeholder="Cole sua chave apenas para esta sessão" /></label>
+              <div class="integration-actions"><button id="saveGeminiKeyBtn" class="primary-btn" type="button">Ativar IA</button><button id="clearGeminiKeyBtn" class="secondary-btn" type="button">Remover</button></div>
+              <small id="geminiKeyStatus" class="integration-status">Não configurada</small>
+              <a class="integration-help" href="https://aistudio.google.com/app/api-keys" target="_blank" rel="noopener noreferrer">Criar chave no Google AI Studio ↗</a>
+            </section>
+
+            <section class="integration-card">
+              <div class="integration-card-head"><span class="integration-mark">Q</span><div><strong>API das Questões</strong><small>Questões reais filtradas por banca</small></div></div>
+              <p>O Worker não armazena nem mantém cache das questões. A integração de produção só é liberada depois do aceite explícito dos termos do provedor.</p>
+              <label>Chave local temporária<input id="questionsKeyInput" type="password" autocomplete="off" placeholder="Use apenas no desenvolvimento local" /></label>
+              <div class="integration-actions"><button id="saveQuestionsKeyBtn" class="primary-btn" type="button">Usar localmente</button><button id="clearQuestionsKeyBtn" class="secondary-btn" type="button">Remover</button></div>
+              <small id="questionsKeyStatus" class="integration-status">Não configurada</small>
+              <a class="integration-help" href="https://www.apidasquestoes.com.br/" target="_blank" rel="noopener noreferrer">Criar conta gratuita ↗</a>
+            </section>
+
+            <section class="integration-card">
+              <div class="integration-card-head"><span class="integration-mark">G</span><div><strong>Groq + Whisper</strong><small>Explicações e transcrição</small></div></div>
+              <p>Explica erros sob demanda no caderno e disponibiliza uma rota segura para transcrever áudio. Se a Groq falhar, as explicações podem usar Workers AI.</p>
+              <small id="groqCardStatus" class="integration-status">Conferindo o Worker…</small>
+              <a class="integration-help" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Gerenciar chave na Groq ↗</a>
+            </section>
+
+            <section class="integration-card external-source-card">
+              <div class="integration-card-head"><span class="integration-mark">W</span><div><strong>WQD Questões</strong><small>Fonte externa complementar</small></div></div>
+              <p>O WQD não oferece API pública documentada. Para respeitar acesso e conteúdo, o Hub abre a plataforma oficial sem copiar ou raspar questões.</p>
+              <a class="primary-btn integration-link" href="https://www.wqd.com.br/" target="_blank" rel="noopener noreferrer">Abrir WQD ↗</a>
+            </section>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head"><div><p class="eyebrow">BACKUP</p><h2>Seus dados</h2></div></div>
+          <p class="muted">Tarefas, erros, resultados e progresso de leitura ficam neste navegador. Exporte um backup antes de limpar os dados.</p>
+          <div class="button-row">
+            <button id="exportBtn" class="primary-btn">Exportar backup</button>
+            <label class="secondary-btn file-label">Importar backup<input id="importInput" type="file" accept=".json" hidden /></label>
+            <button id="clearBtn" class="danger-btn">Apagar tudo</button>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <template id="taskTemplate">
+    <div class="list-item">
+      <button class="check-btn" title="Concluir tarefa">✓</button>
+      <div class="item-main"><div class="item-title-row"><strong class="task-title"></strong><span class="badge task-type"></span></div><small class="task-meta"></small></div>
+      <button class="icon-btn delete-task" title="Excluir">×</button>
+    </div>
+  </template>
+
+  <template id="errorTemplate">
+    <div class="list-item">
+      <div class="item-main">
+        <div class="item-title-row"><strong class="error-title"></strong><span class="badge error-type"></span></div>
+        <small class="error-meta"></small>
+        <p class="error-note"></p>
+        <div class="error-ai-controls" hidden>
+          <button class="ai-btn explain-error" type="button">Explicar com IA</button>
+          <div class="ai-explanation" hidden></div>
+        </div>
+      </div>
+      <button class="icon-btn delete-error" title="Excluir">×</button>
+    </div>
+  </template>
+
+  <script src="ebooks.js"></script>
+  <script src="question-bank.js"></script>
+  <script src="edital-analyzer.js"></script>
+  <script src="app-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
