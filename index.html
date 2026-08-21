@@ -196,16 +196,22 @@
             </div>
           </article>
 
-          <article class="cargo-selector">
+          <article id="cargoSelector" class="cargo-selector" hidden>
             <div class="cargo-selector-copy">
-              <p class="eyebrow">ESCOLHA SEU CARGO</p>
-              <h2>Qual cargo você vai disputar?</h2>
-              <p>Ao escolher, o Concurso Hub monta o planner com as matérias encontradas para esse cargo.</p>
+              <div class="cargo-flow-heading">
+                <div>
+                  <p id="cargoFlowEyebrow" class="eyebrow">ESCOLHA O NÍVEL</p>
+                  <h2 id="cargoFlowTitle">Qual nível consta no seu edital?</h2>
+                </div>
+                <button id="cargoFlowBackBtn" class="secondary-btn cargo-flow-back" type="button" hidden>← Voltar</button>
+              </div>
+              <p id="cargoFlowDescription">Os níveis abaixo foram encontrados diretamente nas evidências do edital.</p>
+              <p id="cargoFlowWarning" class="cargo-flow-warning" role="status" hidden></p>
             </div>
             <div id="cargoChoices" class="cargo-choices"></div>
           </article>
 
-          <div class="summary-grid compact-summary">
+          <div id="cargoSummaryContent" class="summary-grid compact-summary" hidden>
             <article class="summary-card" data-summary-section="vagas"><span class="summary-card-icon">01</span><h3>Vagas</h3><div class="summary-content"></div></article>
             <article class="summary-card" data-summary-section="remuneracao"><span class="summary-card-icon">02</span><h3>Salário e benefícios</h3><div class="summary-content"></div></article>
             <article class="summary-card" data-summary-section="inscricoes"><span class="summary-card-icon">03</span><h3>Inscrições</h3><div class="summary-content"></div></article>
@@ -215,7 +221,7 @@
             <article class="summary-card" data-summary-section="etapas"><span class="summary-card-icon">07</span><h3>Etapas</h3><div class="summary-content"></div></article>
             <article class="summary-card" data-summary-section="regras"><span class="summary-card-icon">08</span><h3>Regras</h3><div class="summary-content"></div></article>
           </div>
-          <p class="summary-disclaimer">Resumo automático. Confirme datas, valores e regras no edital original.</p>
+          <p id="cargoSummaryDisclaimer" class="summary-disclaimer" hidden>Resumo automático. Confirme datas, valores e regras no edital original.</p>
         </div>
       </section>
 
@@ -435,6 +441,7 @@
   <script src="ebooks.js"></script>
   <script src="question-bank.js"></script>
   <script src="edital-analyzer.js"></script>
+  <script src="edital-ux.js"></script>
   <script src="app-config.js"></script>
   <script src="app.js"></script>
 </body>
