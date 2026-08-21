@@ -17,6 +17,10 @@ let currentEditalSummary = null;
 let currentEditalPages = [];
 let currentEditalCatalog = null;
 let currentEditalSource = null;
+let editalUxStage = "idle";
+let selectedEditalLevelKey = null;
+let selectedEditalCargoKey = null;
+const analyzedCargoContexts = new Map();
 let currentSimulation = null;
 let currentReader = null;
 let questionCatalogPromise = null;
@@ -435,18 +439,105 @@ function renderSummarySection(name, value) {
   container.appendChild(list);
 }
 
-function renderCargoChoices(summary) {
+function setCargoSummaryVisibility(visible) {
+  document.querySelector("#cargoSummaryContent").hidden = !visible;
+  document.querySelector("#cargoSummaryDisclaimer").hidden = !visible;
+  renderManualBankPanel();
+}
+
+function setCargoFlowCopy({ eyebrow, title, description, backVisible }) {
+  document.querySelector("#cargoFlowEyebrow").textContent = eyebrow;
+  document.querySelector("#cargoFlowTitle").textContent = title;
+  document.querySelector("#cargoFlowDescription").textContent = description;
+  document.querySelector("#cargoFlowBackBtn").hidden = !backVisible;
+}
+
+function catalogCargoProfile(cargo) {
+  return {
+    name: window.EditalUx.cargoLabel(cargo),
+    subjects: [],
+    confidence: "alta",
+    page: null,
+    details: {
+      vagas: meaningfulText(cargo.vagas),
+      remuneracao: meaningfulText(cargo.salario),
+      requisitos: null
+    },
+    pipelineCargo: cargo
+  };
+}
+
+function catalogLevelGroups() {
+  return window.EditalUx.groupCatalogByEvidenceLevel(currentEditalCatalog?.cargos || []);
+}
+
+function renderLevelChoices() {
   const container = document.querySelector("#cargoChoices");
-  const selector = container.closest(".cargo-selector");
+  const selector = document.querySelector("#cargoSelector");
+  const warning = document.querySelector("#cargoFlowWarning");
   container.replaceChildren();
-  selector.hidden = !summary.cargoProfiles.length;
-  if (!summary.cargoProfiles.length) {
+  const { groups, unresolved } = catalogLevelGroups();
+  editalUxStage = "levels";
+  selector.hidden = !groups.length;
+  setCargoSummaryVisibility(false);
+  setCargoFlowCopy({
+    eyebrow: "ESCOLHA O NÍVEL",
+    title: "Qual nível consta no seu edital?",
+    description: "Os níveis abaixo foram encontrados diretamente nas evidências do edital.",
+    backVisible: false
+  });
+  warning.hidden = !unresolved.length;
+  warning.textContent = unresolved.length
+    ? `${unresolved.length} ${unresolved.length === 1 ? "cargo não foi exibido" : "cargos não foram exibidos"} porque o nível não pôde ser confirmado na evidência do edital.`
+    : "";
+  if (!groups.length) {
     return;
   }
-  summary.cargoProfiles.forEach(profile => {
+
+  groups.forEach(group => {
     const button = document.createElement("button");
     button.className = "cargo-choice";
     button.type = "button";
+    button.setAttribute("aria-pressed", String(group.key === selectedEditalLevelKey));
+    const name = document.createElement("strong");
+    name.textContent = group.level;
+    const meta = document.createElement("span");
+    meta.textContent = `${group.cargos.length} ${group.cargos.length === 1 ? "cargo/vaga" : "cargos/vagas"}`;
+    button.append(name, meta);
+    button.addEventListener("click", () => renderCargoChoicesForLevel(group.key));
+    container.appendChild(button);
+  });
+}
+
+function renderCargoChoicesForLevel(levelKey) {
+  const container = document.querySelector("#cargoChoices");
+  const selector = document.querySelector("#cargoSelector");
+  const warning = document.querySelector("#cargoFlowWarning");
+  const group = catalogLevelGroups().groups.find(item => item.key === levelKey);
+  if (!group) {
+    renderLevelChoices();
+    return;
+  }
+
+  editalUxStage = "cargos";
+  selectedEditalLevelKey = group.key;
+  selector.hidden = false;
+  warning.hidden = true;
+  warning.textContent = "";
+  container.replaceChildren();
+  setCargoSummaryVisibility(false);
+  setCargoFlowCopy({
+    eyebrow: group.level,
+    title: "Escolha o cargo ou a vaga",
+    description: "A lista mostra somente os cargos vinculados a este nível nas evidências do edital.",
+    backVisible: true
+  });
+
+  group.cargos.map(catalogCargoProfile).forEach(profile => {
+    const button = document.createElement("button");
+    button.className = "cargo-choice";
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(window.EditalUx.cargoKey(profile.pipelineCargo) === selectedEditalCargoKey));
     const name = document.createElement("strong");
     name.textContent = profile.name;
     const meta = document.createElement("span");
@@ -478,9 +569,42 @@ function renderCargoChoices(summary) {
   });
 }
 
+function renderCargoSummaryStage(cargo, { allowBack = true } = {}) {
+  const selector = document.querySelector("#cargoSelector");
+  const container = document.querySelector("#cargoChoices");
+  const warning = document.querySelector("#cargoFlowWarning");
+  const cargoName = window.EditalUx.cargoLabel(cargo) || meaningfulText(cargo?.nome) || "Cargo selecionado";
+  editalUxStage = "summary";
+  selectedEditalCargoKey = window.EditalUx.cargoKey(cargo);
+  selector.hidden = false;
+  container.replaceChildren();
+  warning.hidden = true;
+  warning.textContent = "";
+  setCargoFlowCopy({
+    eyebrow: "CARGO SELECIONADO",
+    title: cargoName,
+    description: "Resumo completo baseado apenas nas informações e evidências aplicáveis a este cargo.",
+    backVisible: allowBack && Boolean(currentEditalCatalog && currentEditalPages.length)
+  });
+  setCargoSummaryVisibility(true);
+}
+
+function renderCargoChoices() {
+  if (!currentEditalCatalog?.cargos?.length) {
+    document.querySelector("#cargoSelector").hidden = true;
+    setCargoSummaryVisibility(editalUxStage === "summary");
+    return;
+  }
+  if (editalUxStage === "cargos" && selectedEditalLevelKey) {
+    renderCargoChoicesForLevel(selectedEditalLevelKey);
+    return;
+  }
+  renderLevelChoices();
+}
+
 function renderManualBankPanel() {
   const panel = document.querySelector("#manualBankPanel");
-  panel.hidden = !currentEditalSummary || currentEditalSummary.exam.supported;
+  panel.hidden = editalUxStage !== "summary" || !currentEditalSummary || currentEditalSummary.exam.supported;
 }
 
 function updateSummaryMeta() {
@@ -495,6 +619,7 @@ function updateSummaryMeta() {
 }
 
 function renderEditalSummary(file, summary) {
+  editalUxStage = "loading";
   currentEditalSummary = {
     fileName: file.name,
     editalId: summary.editalId || `edital:${file.name.toLowerCase()}:${file.size}:${file.lastModified || 0}`,
@@ -509,7 +634,7 @@ function renderEditalSummary(file, summary) {
   ["vagas", "remuneracao", "inscricoes", "prova", "requisitos", "etapas", "regras"]
     .forEach(name => renderSummarySection(name, currentEditalSummary.summaries[name]));
   renderSummarySection("materias", currentEditalSummary.subjectDetails);
-  renderCargoChoices(summary);
+  renderCargoChoices();
   renderManualBankPanel();
   document.querySelector("#editalStatus").hidden = true;
   document.querySelector("#editalResults").hidden = false;
@@ -553,6 +678,10 @@ async function analyzeEditalFile(file) {
   setEditalStatus("Abrindo o edital…", file.name, 4);
   try {
     currentEditalCatalog = null;
+    editalUxStage = "loading";
+    selectedEditalLevelKey = null;
+    selectedEditalCargoKey = null;
+    analyzedCargoContexts.clear();
     const sourceUrl = meaningfulText(
       document.querySelector("#editalSourceUrl")?.value
     );
@@ -764,7 +893,7 @@ function applyAiAnalysis(data) {
   ["vagas", "remuneracao", "inscricoes", "prova", "requisitos", "etapas", "regras"]
     .forEach(name => renderSummarySection(name, summaries[name]));
   renderSummarySection("materias", subjectDetails);
-  renderCargoChoices(currentEditalSummary);
+  renderCargoChoices();
   renderManualBankPanel();
   updateSummaryMeta();
   const providers = [data.providers?.extraction?.name, data.providers?.summarization?.name].filter(Boolean);
@@ -799,22 +928,21 @@ async function prepareEditalCatalog() {
       },
       cargos: catalog.cargos
     };
-    currentEditalSummary.cargoProfiles = catalog.cargos.map(cargo => ({
-      name: [cargo.nome, cargo.especialidade].map(meaningfulText).filter(Boolean).join(" — "),
-      subjects: [],
-      confidence: "alta",
-      page: null,
-      details: {
-        vagas: meaningfulText(cargo.vagas),
-        remuneracao: meaningfulText(cargo.salario),
-        requisitos: null
-      },
-      pipelineCargo: cargo
-    }));
+    currentEditalSummary.cargoProfiles = catalog.cargos.map(catalogCargoProfile);
 
-    renderCargoChoices(currentEditalSummary);
+    selectedEditalLevelKey = null;
+    selectedEditalCargoKey = null;
+    renderLevelChoices();
+    const { groups } = catalogLevelGroups();
+    if (!groups.length) {
+      setAiReviewStatus(
+        "Os cargos foram catalogados, mas nenhum nível pôde ser confirmado nas evidências do edital. Nenhuma categoria foi criada automaticamente.",
+        "warning"
+      );
+      return;
+    }
     setAiReviewStatus(
-      `${catalog.cargos.length} ${catalog.cargos.length === 1 ? "cargo encontrado" : "cargos encontrados"}. Escolha o seu para concluir e salvar a análise.`,
+      `${groups.length} ${groups.length === 1 ? "nível encontrado" : "níveis encontrados"} e ${catalog.cargos.length} ${catalog.cargos.length === 1 ? "cargo encontrado" : "cargos encontrados"}. Escolha o nível para continuar.`,
       "success"
     );
   } catch (error) {
@@ -829,7 +957,7 @@ function textList(values) {
     .filter(Boolean);
 }
 
-function applyPersistedEditalContext(context) {
+function applyPersistedEditalContext(context, { preserveFlow = false } = {}) {
   if (!context?.edital || !context?.selectedCargo) return false;
 
   const edital = context.edital;
@@ -878,14 +1006,18 @@ function applyPersistedEditalContext(context) {
     .join(" ")
     .match(/(\d+(?:[.,]\d+)?)\s*(?:h|horas?)/i);
 
-  currentEditalSource = {
-    sourceUrl: edital.sourceUrl || null,
-    sourceHash: edital.sourceHash || null,
-    sourceVersion: edital.sourceVersion || null
-  };
+  currentEditalSource = preserveFlow && currentEditalSource
+    ? currentEditalSource
+    : {
+      sourceUrl: edital.sourceUrl || null,
+      sourceHash: edital.sourceHash || null,
+      sourceVersion: edital.sourceVersion || null
+    };
   document.querySelector("#editalSourceUrl").value = edital.sourceUrl || "";
-  currentEditalCatalog = null;
-  currentEditalPages = [];
+  if (!preserveFlow) {
+    currentEditalCatalog = null;
+    currentEditalPages = [];
+  }
   currentEditalSummary = {
     fileName: edital.nome,
     editalId: edital.id,
@@ -932,8 +1064,7 @@ function applyPersistedEditalContext(context) {
   ["vagas", "remuneracao", "inscricoes", "prova", "requisitos", "etapas", "regras"]
     .forEach(name => renderSummarySection(name, currentEditalSummary.summaries[name]));
   renderSummarySection("materias", subjectDetails);
-  renderCargoChoices(currentEditalSummary);
-  renderManualBankPanel();
+  renderCargoSummaryStage(cargo, { allowBack: preserveFlow });
   document.querySelector("#editalStatus").hidden = true;
   document.querySelector("#editalError").hidden = true;
   document.querySelector("#editalResults").hidden = false;
@@ -993,6 +1124,17 @@ function renderEditalUpdateAlert(alert) {
 
 async function selectPipelineCargo(profile, button) {
   if (!currentEditalCatalog || !profile?.pipelineCargo || !currentEditalPages.length) return;
+  const cargoKey = window.EditalUx.cargoKey(profile.pipelineCargo);
+  selectedEditalCargoKey = cargoKey;
+  const cached = analyzedCargoContexts.get(cargoKey);
+  if (cached) {
+    applyPersistedEditalContext(cached.context, { preserveFlow: true });
+    renderEditalUpdateAlert(cached.alert);
+    setAiReviewStatus("Cargo restaurado nesta sessão sem repetir a análise de IA.", "success");
+    const selectedProfile = currentEditalSummary?.cargoProfiles?.[0];
+    if (selectedProfile?.subjects?.length) createPlanForCargo(selectedProfile);
+    return;
+  }
   const originalLabel = button.textContent;
   document.querySelectorAll(".cargo-choice").forEach(item => { item.disabled = true; });
   button.textContent = "Analisando este cargo…";
@@ -1045,7 +1187,8 @@ async function selectPipelineCargo(profile, button) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ editalId })
     });
-    applyPersistedEditalContext(bootstrap.context);
+    analyzedCargoContexts.set(cargoKey, { context: bootstrap.context, alert: bootstrap.alert });
+    applyPersistedEditalContext(bootstrap.context, { preserveFlow: true });
     renderEditalUpdateAlert(bootstrap.alert);
     setAiReviewStatus("Cargo salvo. Ao reabrir o Hub, estes dados serão restaurados sem repetir a IA.", "success");
 
@@ -1055,8 +1198,16 @@ async function selectPipelineCargo(profile, button) {
     console.error("Falha ao concluir a seleção do cargo:", error);
     setAiReviewStatus(`Não foi possível salvar este cargo: ${error.message}`, "error");
     button.textContent = originalLabel;
-    document.querySelectorAll(".cargo-choice").forEach(item => { item.disabled = false; });
+    renderCargoChoicesForLevel(selectedEditalLevelKey);
   }
+}
+
+function navigateCargoFlowBack() {
+  if (editalUxStage === "summary" && selectedEditalLevelKey) {
+    renderCargoChoicesForLevel(selectedEditalLevelKey);
+    return;
+  }
+  if (editalUxStage === "cargos") renderLevelChoices();
 }
 
 async function bootstrapPersistedHub() {
@@ -1188,6 +1339,10 @@ function initEditalSummarizer() {
     currentEditalPages = [];
     currentEditalCatalog = null;
     currentEditalSource = null;
+    editalUxStage = "idle";
+    selectedEditalLevelKey = null;
+    selectedEditalCargoKey = null;
+    analyzedCargoContexts.clear();
     renderEditalUpdateAlert(null);
     document.querySelector("#editalSourceUrl").value = "";
     document.querySelector("#editalResults").hidden = true;
@@ -1196,6 +1351,7 @@ function initEditalSummarizer() {
     input.click();
   });
   document.querySelector("#aiReviewBtn").addEventListener("click", reviewSummaryWithGemini);
+  document.querySelector("#cargoFlowBackBtn").addEventListener("click", navigateCargoFlowBack);
   document.querySelector("#saveManualBankBtn").addEventListener("click", saveManualBank);
 }
 
