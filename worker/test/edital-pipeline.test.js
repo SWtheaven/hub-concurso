@@ -301,6 +301,7 @@ const cargoAnalysis = {
   },
   prova: null,
   materias: [
+    { nome: "Conhecimentos Gerais", topicos: ["Regra comum ao nível técnico"], peso: null, numeroQuestoes: "10", evidencia: evidence("Nível técnico", "Conhecimentos Gerais") },
     { nome: "Matemática", topicos: [], peso: null, numeroQuestoes: null, evidencia: evidence("101", "Matemática") },
     { nome: "Língua Portuguesa", topicos: [], peso: null, numeroQuestoes: null, evidencia: evidence("101", "Língua Portuguesa") },
     { nome: "Física", topicos: [], peso: null, numeroQuestoes: null, evidencia: evidence("101", "Física") },
@@ -369,11 +370,11 @@ assert.deepEqual(
 assert.equal(tables.editais.length, 1);
 assert.equal(tables.edital_cargos.length, 4);
 assert.equal(tables.edital_selections.length, 1);
-assert.equal(tables.edital_materias.length, 3);
+assert.equal(tables.edital_materias.length, 4);
 assert.equal(tables.edital_revisions.length, 0);
 assert.deepEqual(
   tables.edital_materias.map(item => item.nome).sort(),
-  ["Física", "Língua Portuguesa", "Matemática"].sort()
+  ["Conhecimentos Gerais", "Física", "Língua Portuguesa", "Matemática"].sort()
 );
 
 const selectedRow = tables.edital_cargos.find(row => row.codigo === "101");
@@ -397,7 +398,7 @@ mismatchedPayload.cargoAnalysis.selectedCargo.codigo = "102";
 const mismatched = await persist(mismatchedPayload);
 assert.equal(mismatched.response.status, 400);
 assert.equal(mismatched.data.ok, false);
-assert.equal(tables.edital_materias.length, 3);
+assert.equal(tables.edital_materias.length, 4);
 
 const callWorker = async (path, { method = "GET", body = null } = {}) => {
   const response = await worker.fetch(new Request(`https://worker.test${path}`, {
@@ -425,7 +426,7 @@ const firstBootstrap = await callWorker("/api/hub/bootstrap", {
 assert.equal(firstBootstrap.response.status, 200);
 assert.equal(firstBootstrap.data.state, "ready");
 assert.equal(firstBootstrap.data.context.selectedCargo.codigo, "101");
-assert.equal(firstBootstrap.data.context.materias.length, 3);
+assert.equal(firstBootstrap.data.context.materias.length, 4);
 assert.equal(firstBootstrap.data.context.edital.regrasGerais.length, 1);
 assert.equal(firstBootstrap.data.sourceCheck.state, "sem_alteracao");
 assert.equal(firstBootstrap.data.alert, null);
