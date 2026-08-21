@@ -1866,8 +1866,9 @@ ${editalText}
                 cargo => mentionsCargo(text, cargo)
               );
 
-              // Em edital multi-cargo, a evidência precisa apontar para o escolhido.
-              if (cargos.length > 1 && !selectedMentioned) continue;
+              // O analyze-cargo já valida o escopo isolado. Evidência geral pode
+              // ser aplicável a todos os cargos de um nível sem repetir o nome
+              // escolhido; menção exclusiva a outro cargo continua rejeitada.
               if (foreignMentioned && !selectedMentioned) continue;
 
               const key = canonical(nome);
