@@ -1,6 +1,6 @@
 (function () {
   const localWorker = "http://127.0.0.1:8787";
-  const deployedWorker = "https://muddy-voice-c9c5.gspereira-dev.workers.dev";
+  const deployedWorker = "https://concurso-hub-api.gspereira-dev.workers.dev";
   const useLocalWorker = new URLSearchParams(window.location.search).get("api") === "local";
   window.CONCURSO_HUB_CONFIG = {
     apiBase: useLocalWorker ? localWorker : deployedWorker,
