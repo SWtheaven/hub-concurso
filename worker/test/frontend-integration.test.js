@@ -27,7 +27,23 @@ test("frontend includes Etapa 7E once and does not depend on pasted helper snipp
   ]) assert.match(app, new RegExp(`function ${functionName}\\b`));
 
   assert.match(app, /refreshGatewayStatus\(\)[\s\S]*?\.then\(bootstrapPersistedHub\)/);
-  assert.match(config, /muddy-voice-c9c5\.gspereira-dev\.workers\.dev/);
+  assert.match(config, /concurso-hub-api\.gspereira-dev\.workers\.dev/);
+  assert.doesNotMatch(config, /muddy-voice-c9c5\.gspereira-dev\.workers\.dev/);
   assert.match(bank, /id: "fundacao_cesgranrio"/);
   assert.match(html, /Fundação CESGRANRIO/);
+});
+
+test("frontend sends every extracted edital page without a global character cutoff", async () => {
+  const app = await readFile(projectFile("app.js"), "utf8");
+  const sourceFunction = app.match(
+    /function editalTextFromPages\(\)\s*\{([\s\S]*?)\n\}/
+  );
+
+  assert.ok(sourceFunction, "editalTextFromPages must remain explicit and testable");
+  assert.match(sourceFunction[1], /currentEditalPages/);
+  assert.match(sourceFunction[1], /PÁGINA/);
+  assert.doesNotMatch(sourceFunction[1], /\.slice\s*\(/);
+  assert.doesNotMatch(sourceFunction[1], /\.substring\s*\(/);
+  assert.doesNotMatch(sourceFunction[1], /180000/);
+  assert.doesNotMatch(app, /180000/);
 });
