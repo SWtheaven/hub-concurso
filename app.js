@@ -440,6 +440,10 @@ function renderSummarySection(name, value) {
 }
 
 function setCargoSummaryVisibility(visible) {
+  document.querySelector("#summaryReadyState").hidden = !visible;
+  document.querySelector("#aiReviewBtn").hidden = !visible;
+  document.querySelector("#copySummaryBtn").hidden = !visible;
+  document.querySelector("#summaryNotice").hidden = !visible;
   document.querySelector("#cargoSummaryContent").hidden = !visible;
   document.querySelector("#cargoSummaryDisclaimer").hidden = !visible;
   renderManualBankPanel();

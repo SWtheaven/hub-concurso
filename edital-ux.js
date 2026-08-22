@@ -1,13 +1,6 @@
 (function attachEditalUx(global) {
   "use strict";
 
-  const LEVEL_PATTERNS = [
-    /^(?:nível\s+)?(?:ensino\s+)?fundamental(?:\s+(?:incompleto|completo))?$/i,
-    /^(?:nível\s+)?(?:ensino\s+)?médio(?:\s*[-–—]\s*técnico|\s+técnico)?(?:\s+(?:incompleto|completo))?$/i,
-    /^(?:nível\s+)?(?:ensino\s+)?técnico(?:\s+(?:incompleto|completo))?$/i,
-    /^(?:nível\s+)?(?:ensino\s+)?superior(?:\s+(?:incompleto|completo))?$/i
-  ];
-
   function clean(value) {
     return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
   }
@@ -16,43 +9,45 @@
     return clean(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
-  function isLevelEvidence(value) {
-    const text = clean(value);
-    return Boolean(text) && LEVEL_PATTERNS.some(pattern => pattern.test(text));
+  function normalizedLevel(value) {
+    const text = fold(value).replace(/[–—]/g, "-");
+    if (/^(?:nivel\s+|ensino\s+)?(?:medio\s*-\s*tecnico|medio\s+tecnico|tecnico)$/.test(text)) return "Técnico";
+    if (/^(?:nivel\s+|ensino\s+)?superior$/.test(text)) return "Superior";
+    if (/^(?:nivel\s+|ensino\s+)?medio$/.test(text)) return "Médio";
+    if (/^(?:nivel\s+|ensino\s+)?fundamental$/.test(text)) return "Fundamental";
+    return null;
   }
 
   function cargoEvidenceText(cargo) {
     return clean(cargo?.evidencia?.trecho || cargo?.evidence?.trecho);
   }
 
+  function schoolingEvidenceText(cargo) {
+    return clean(cargo?.escolaridadeEvidencia?.trecho);
+  }
+
   function cargoLevelFromEvidence(cargo) {
-    const evidence = cargoEvidenceText(cargo);
-    if (!evidence) return null;
+    const structuredLevel = normalizedLevel(cargo?.escolaridade);
+    const evidence = schoolingEvidenceText(cargo);
+    if (!structuredLevel || !evidence) return null;
 
-    const evidenceParts = evidence
-      .split(/[|\n]/)
-      .map(clean)
-      .filter(Boolean);
-    const cargoIdentityParts = [cargo?.codigo, cargo?.nome, cargo?.especialidade]
+    let text = fold(evidence).replace(/[–—]/g, "-");
+    [cargo?.codigo, cargo?.nome, cargo?.especialidade]
       .map(fold)
-      .filter(Boolean);
-    const evidencedPart = evidenceParts.find(part =>
-      isLevelEvidence(part) && !cargoIdentityParts.includes(fold(part))
-    );
-    if (evidencedPart) return evidencedPart;
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length)
+      .forEach(identity => {
+        text = text.split(identity).join(" ");
+      });
 
-    const labeled = evidence.match(/(?:nível(?:\s+de\s+escolaridade)?|escolaridade)\s*[:=-]\s*([^|;,\n]+)/i);
-    const labeledLevel = clean(labeled?.[1]);
-    if (isLevelEvidence(labeledLevel)) return labeledLevel;
-
-    const structuredCandidates = [
-      cargo?.nivelEscolaridade,
-      cargo?.escolaridade,
-      cargo?.nivel
-    ].map(clean).filter(Boolean);
-    return structuredCandidates.find(candidate =>
-      isLevelEvidence(candidate) && evidenceParts.some(part => fold(part) === fold(candidate))
-    ) || null;
+    text = text.replace(/medio\s*-\s*tecnico|medio\s+tecnico/g, "tecnico");
+    const evidencedLevels = new Set();
+    if (/\bsuperior\b/.test(text)) evidencedLevels.add("Superior");
+    if (/\btecnico\b/.test(text)) evidencedLevels.add("Técnico");
+    if (/\bmedio\b/.test(text)) evidencedLevels.add("Médio");
+    if (/\bfundamental\b/.test(text)) evidencedLevels.add("Fundamental");
+    const evidencedLevel = evidencedLevels.size === 1 ? [...evidencedLevels][0] : null;
+    return evidencedLevel === structuredLevel ? evidencedLevel : null;
   }
 
   function cargoKey(cargo) {
@@ -86,6 +81,7 @@
 
   global.EditalUx = {
     cargoEvidenceText,
+    schoolingEvidenceText,
     cargoKey,
     cargoLabel,
     cargoLevelFromEvidence,

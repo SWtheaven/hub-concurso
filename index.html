@@ -159,19 +159,19 @@
 
         <div id="editalResults" class="edital-results" hidden>
           <article class="summary-header">
-            <div>
+            <div id="summaryReadyState" hidden>
               <p class="eyebrow">RESUMO PRONTO</p>
               <h2 id="summaryFileName">Edital analisado</h2>
               <p id="summaryMeta" class="muted"></p>
             </div>
             <div class="summary-actions">
-              <button id="aiReviewBtn" class="ai-btn" type="button">Analisar com IA</button>
-              <button id="copySummaryBtn" class="secondary-btn" type="button">Copiar resumo</button>
+              <button id="aiReviewBtn" class="ai-btn" type="button" hidden>Analisar com IA</button>
+              <button id="copySummaryBtn" class="secondary-btn" type="button" hidden>Copiar resumo</button>
               <button id="newSummaryBtn" class="primary-btn" type="button">Novo PDF</button>
             </div>
           </article>
 
-          <div id="summaryNotice" class="summary-notice"></div>
+          <div id="summaryNotice" class="summary-notice" hidden></div>
           <div id="aiReviewStatus" class="ai-review-status" aria-live="polite" hidden></div>
 
           <article id="manualBankPanel" class="manual-bank-panel" hidden>
