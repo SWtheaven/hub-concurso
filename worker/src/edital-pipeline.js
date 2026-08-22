@@ -1,4 +1,5 @@
 import { modelConfig } from "./model-config.js";
+import { sanitizeCatalogSchooling } from "./edital-schooling.js";
 
 export default {
   async fetch(request, env) {
@@ -1142,6 +1143,15 @@ ${newText ? newText.slice(0, 60000) : "[novo texto indisponível ou fonte binár
                 vagas: nullable,
                 salario: nullable,
                 cargaHoraria: nullable,
+                escolaridade: nullable,
+                escolaridadeEvidencia: {
+                  type: "object",
+                  properties: {
+                    secao: nullable,
+                    trecho: nullable
+                  },
+                  required: ["secao", "trecho"]
+                },
                 evidencia: {
                   type: "object",
                   properties: {
@@ -1153,7 +1163,8 @@ ${newText ? newText.slice(0, 60000) : "[novo texto indisponível ou fonte binár
               },
               required: [
                 "codigo", "nome", "especialidade", "localidade", "uf",
-                "vagas", "salario", "cargaHoraria", "evidencia"
+                "vagas", "salario", "cargaHoraria", "escolaridade",
+                "escolaridadeEvidencia", "evidencia"
               ]
             }
           }
@@ -1189,6 +1200,11 @@ REGRAS ABSOLUTAS:
 16. Não copie páginas inteiras.
 17. Preserve números, valores, códigos e localidades.
 18. Faça uma revisão final para garantir que nenhum cargo ficou de fora.
+19. Para cada cargo, extraia escolaridade somente quando ela estiver explícita no edital, inclusive em coluna, cabeçalho ou seção aplicável ao cargo.
+20. Normalize escolaridade exclusivamente como Fundamental, Médio, Técnico ou Superior. "Médio-Técnico" corresponde a Técnico.
+21. Nunca deduza escolaridade pelo nome do cargo, especialidade, salário, atribuições ou conhecimento externo.
+22. Em escolaridadeEvidencia, informe seção e trecho curto que contenha e prove a escolaridade daquele cargo. Uma evidência coletiva pode ser repetida apenas nos cargos aos quais o edital a aplica explicitamente.
+23. Sem prova explícita, use escolaridade = null e escolaridadeEvidencia com secao = null e trecho = null.
 
 EDITAL:
 ${editalText}
@@ -1208,7 +1224,12 @@ ${editalText}
         provider: "gemini",
         model: GEMINI_MODEL,
         stage: "catalog-cargos",
-        result: result.result
+        result: {
+          ...result.result,
+          cargos: Array.isArray(result.result?.cargos)
+            ? result.result.cargos.map(sanitizeCatalogSchooling)
+            : []
+        }
       });
     }
 
