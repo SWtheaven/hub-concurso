@@ -15,6 +15,8 @@ const WORKER_API_BASE = String(window.CONCURSO_HUB_CONFIG?.apiBase ?? "").replac
 let pdfJsPromise;
 let currentEditalSummary = null;
 let currentEditalPages = [];
+let currentEditalDocuments = [];
+let pendingEditalFiles = [];
 let currentEditalCatalog = null;
 let currentEditalSource = null;
 let editalUxStage = "idle";
@@ -659,54 +661,185 @@ function editalTextFromPages() {
     .join("\n\n");
 }
 
-async function sha256File(file) {
-  const digest = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", await file.arrayBuffer())
-  );
-  return `sha256:${[...digest]
-    .map(byte => byte.toString(16).padStart(2, "0"))
-    .join("")}`;
+function editalDocumentsPayload() {
+  return window.EditalPackage.apiDocuments(currentEditalDocuments);
 }
 
-async function analyzeEditalFile(file) {
+function editalPackageMetadata(cargoAnalysis = null) {
+  return {
+    package_hash: currentEditalSource?.sourceHash || null,
+    document_manifest: window.EditalPackage.manifest(currentEditalDocuments),
+    document_snapshots: editalDocumentsPayload().map(document => ({
+      id: document.id,
+      name: document.name,
+      hash: document.hash,
+      sourceUrl: document.sourceUrl,
+      pages: document.pages
+    })),
+    catalog_conflicts: Array.isArray(currentEditalCatalog?.conflitos)
+      ? currentEditalCatalog.conflitos
+      : [],
+    analysis_conflicts: Array.isArray(cargoAnalysis?.conflitos)
+      ? cargoAnalysis.conflitos
+      : []
+  };
+}
+
+function editalLogicalKey() {
+  if (currentEditalSource?.sourceUrl) return currentEditalSource.sourceUrl;
+  const contest = [
+    currentEditalCatalog?.concurso,
+    currentEditalCatalog?.orgao,
+    currentEditalCatalog?.banca
+  ].map(meaningfulText).filter(Boolean).join("|");
+  if (currentEditalDocuments.length <= 1) return contest;
+  const documentNames = currentEditalDocuments
+    .map(document => document.name.trim().toLowerCase())
+    .sort()
+    .join("|");
+  return `${contest}|documents:${documentNames}`;
+}
+
+function renderEditalDocumentQueue() {
+  const queue = document.querySelector("#editalDocumentQueue");
+  const list = document.querySelector("#editalDocumentList");
+  list.replaceChildren();
+  queue.hidden = pendingEditalFiles.length === 0;
+
+  pendingEditalFiles.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "document-item";
+    const copy = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = item.file.name;
+    const size = document.createElement("small");
+    size.textContent = `${(item.file.size / (1024 * 1024)).toFixed(2)} MB`;
+    copy.append(name, document.createElement("br"), size);
+    const remove = document.createElement("button");
+    remove.className = "icon-btn document-remove";
+    remove.type = "button";
+    remove.title = `Remover ${item.file.name}`;
+    remove.setAttribute("aria-label", `Remover ${item.file.name}`);
+    remove.textContent = "×";
+    remove.addEventListener("click", () => {
+      pendingEditalFiles = pendingEditalFiles.filter(candidate => candidate.id !== item.id);
+      renderEditalDocumentQueue();
+    });
+    const source = document.createElement("input");
+    source.type = "url";
+    source.inputMode = "url";
+    source.placeholder = "Link oficial deste documento (opcional)";
+    source.value = item.sourceUrl || "";
+    source.addEventListener("input", () => { item.sourceUrl = source.value.trim(); });
+    row.append(copy, remove, source);
+    list.appendChild(row);
+  });
+}
+
+function queueEditalFiles(fileList) {
+  const files = [...(fileList || [])];
+  let rejected = 0;
+  files.forEach(file => {
+    const validPdf = file && (
+      file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf"
+    );
+    if (!validPdf || file.size > MAX_PDF_SIZE) {
+      rejected += 1;
+      return;
+    }
+    const identity = `${file.name}|${file.size}|${file.lastModified || 0}`;
+    if (!pendingEditalFiles.some(item => item.id === identity))
+      pendingEditalFiles.push({ id: identity, file, sourceUrl: "" });
+  });
+  renderEditalDocumentQueue();
+  if (rejected) showEditalError(
+    `${rejected} arquivo(s) ignorado(s): use somente PDF com até 50 MB.`
+  );
+  else document.querySelector("#editalError").hidden = true;
+}
+
+async function analyzeEditalDocuments() {
   document.querySelector("#editalError").hidden = true;
   document.querySelector("#editalResults").hidden = true;
-  if (!file || (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf")) {
-    showEditalError("Escolha um arquivo no formato PDF.");
+  if (!pendingEditalFiles.length) {
+    showEditalError("Adicione ao menos um arquivo PDF ao pacote.");
     return;
   }
-  if (file.size > MAX_PDF_SIZE) {
-    showEditalError("O arquivo ultrapassa o limite de 50 MB.");
-    return;
-  }
-  setEditalStatus("Abrindo o edital…", file.name, 4);
+  setEditalStatus("Abrindo os documentos…", `${pendingEditalFiles.length} PDF(s)`, 4);
   try {
     currentEditalCatalog = null;
     editalUxStage = "loading";
     selectedEditalLevelKey = null;
     selectedEditalCargoKey = null;
     analyzedCargoContexts.clear();
-    const sourceUrl = meaningfulText(
+    const primarySourceUrl = meaningfulText(
       document.querySelector("#editalSourceUrl")?.value
     );
+    const documents = [];
+    const uniqueQueuedFiles = [];
+    const seenHashes = new Set();
+    for (let index = 0; index < pendingEditalFiles.length; index += 1) {
+      const queued = pendingEditalFiles[index];
+      const hash = await window.EditalPackage.sha256File(queued.file);
+      if (seenHashes.has(hash)) continue;
+      seenHashes.add(hash);
+      uniqueQueuedFiles.push(queued);
+      const pages = await extractPdfPages(queued.file, (current, total) => {
+        const documentProgress = (index + (current / total)) / pendingEditalFiles.length;
+        setEditalStatus(
+          "Lendo o conteúdo…",
+          `${queued.file.name} • página ${current} de ${total}`,
+          8 + Math.round(documentProgress * 82)
+        );
+      });
+      documents.push({
+        id: window.EditalPackage.documentId(hash),
+        name: queued.file.name,
+        hash,
+        sourceUrl: meaningfulText(queued.sourceUrl) ||
+          (index === 0 ? primarySourceUrl : null),
+        pages
+      });
+    }
+    pendingEditalFiles = uniqueQueuedFiles;
+    renderEditalDocumentQueue();
+    currentEditalDocuments = documents;
+    currentEditalPages = documents.flatMap(document => document.pages.map(page => ({
+      ...page,
+      documentId: document.id,
+      documentName: document.name
+    })));
+    if (currentEditalPages.reduce((sum, page) => sum + page.text.trim().length, 0) < 80)
+      throw new Error("Pacote sem texto selecionável");
+    const packageHash = await window.EditalPackage.combinedHash(documents);
     currentEditalSource = {
-      sourceUrl,
-      sourceHash: await sha256File(file),
+      sourceUrl: documents.length === 1 ? documents[0].sourceUrl : null,
+      sourceHash: packageHash,
       sourceVersion: null
     };
-    const pages = await extractPdfPages(file, (current, total) => {
-      setEditalStatus("Lendo o conteúdo…", `Página ${current} de ${total}`, 8 + Math.round((current / total) * 82));
-    });
-    currentEditalPages = pages;
-    if (pages.reduce((sum, page) => sum + page.text.trim().length, 0) < 80) throw new Error("PDF sem texto selecionável");
     setEditalStatus("Organizando o resumo…", "Separando cargos, matérias e regras", 95);
     await new Promise(resolve => setTimeout(resolve, 120));
-    const summary = window.EditalAnalyzer.analyze(pages);
-    summary.editalId = `edital:${file.name.toLowerCase()}:${file.size}:${file.lastModified || 0}`;
+    const summary = window.EditalAnalyzer.analyze(currentEditalPages);
+    const totalSize = pendingEditalFiles.reduce((sum, item) => sum + item.file.size, 0);
+    const displayFile = documents.length === 1
+      ? pendingEditalFiles.find(item => item.file.name === documents[0].name)?.file
+      : {
+          name: `Pacote com ${documents.length} documentos.pdf`,
+          size: totalSize,
+          lastModified: Math.max(...pendingEditalFiles.map(item => item.file.lastModified || 0))
+        };
+    summary.editalId = `edital-package:${packageHash}`;
     setEditalStatus("Resumo concluído", `${summary.metrics.findings} pontos encontrados`, 100);
-    renderEditalSummary(file, summary);
-    if (gatewayStatus.editalAi || sessionStorage.getItem(GEMINI_SESSION_KEY)) {
+    renderEditalSummary(displayFile, summary);
+    if (
+      currentEditalDocuments.length === 1 &&
+      (gatewayStatus.editalAi || sessionStorage.getItem(GEMINI_SESSION_KEY))
+    ) {
       await reviewSummaryWithGemini({ automatic: true });
+    } else if (currentEditalDocuments.length > 1) {
+      setAiReviewStatus(
+        "Pacote extraído. O catálogo autoritativo analisará os documentos com identidade e página preservadas."
+      );
     } else {
       setAiReviewStatus("A extração local foi concluída. Configure Gemini ou Groq para gerar os resumos semânticos.", "warning");
     }
@@ -907,14 +1040,17 @@ function applyAiAnalysis(data) {
 }
 
 async function prepareEditalCatalog() {
-  if (!currentEditalSummary || !currentEditalPages.length) return;
+  if (!currentEditalSummary || !currentEditalDocuments.length) return;
   setAiReviewStatus("Identificando todos os cargos do edital para você escolher um deles.");
 
   try {
     const response = await authenticatedApiRequest("/api/edital/catalog-cargos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ editalText: editalTextFromPages() })
+      body: JSON.stringify({
+        documents: editalDocumentsPayload(),
+        packageHash: currentEditalSource?.sourceHash || null
+      })
     });
     const catalog = response?.result;
     if (!catalog || !Array.isArray(catalog.cargos) || !catalog.cargos.length) {
@@ -945,9 +1081,14 @@ async function prepareEditalCatalog() {
       );
       return;
     }
+    const conflictCount = Array.isArray(catalog.conflitos)
+      ? catalog.conflitos.length
+      : 0;
     setAiReviewStatus(
-      `${groups.length} ${groups.length === 1 ? "nível encontrado" : "níveis encontrados"} e ${catalog.cargos.length} ${catalog.cargos.length === 1 ? "cargo encontrado" : "cargos encontrados"}. Escolha o nível para continuar.`,
-      "success"
+      conflictCount
+        ? `${conflictCount} conflito(s) documental(is) sem precedência comprovada foram sinalizados. Revise as evidências antes de escolher o cargo.`
+        : `${groups.length} ${groups.length === 1 ? "nível encontrado" : "níveis encontrados"} e ${catalog.cargos.length} ${catalog.cargos.length === 1 ? "cargo encontrado" : "cargos encontrados"}. Escolha o nível para continuar.`,
+      conflictCount ? "warning" : "success"
     );
   } catch (error) {
     console.error("Falha ao montar o catálogo de cargos:", error);
@@ -1127,7 +1268,7 @@ function renderEditalUpdateAlert(alert) {
 }
 
 async function selectPipelineCargo(profile, button) {
-  if (!currentEditalCatalog || !profile?.pipelineCargo || !currentEditalPages.length) return;
+  if (!currentEditalCatalog || !profile?.pipelineCargo || !currentEditalDocuments.length) return;
   const cargoKey = window.EditalUx.cargoKey(profile.pipelineCargo);
   selectedEditalCargoKey = cargoKey;
   const cached = analyzedCargoContexts.get(cargoKey);
@@ -1145,14 +1286,15 @@ async function selectPipelineCargo(profile, button) {
   setAiReviewStatus("Analisando apenas o cargo escolhido, sem misturar matérias de outros cargos.");
 
   try {
-    const editalText = editalTextFromPages();
+    const documents = editalDocumentsPayload();
     const analysisResponse = await authenticatedApiRequest("/api/edital/analyze-cargo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         selectedCargo: profile.pipelineCargo,
         regrasGerais: currentEditalCatalog.regrasGerais,
-        editalText
+        documents,
+        packageHash: currentEditalSource?.sourceHash || null
       })
     });
     const analysis = analysisResponse?.result;
@@ -1162,11 +1304,7 @@ async function selectPipelineCargo(profile, button) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        editalKey: currentEditalSource?.sourceUrl || [
-          currentEditalCatalog.concurso,
-          currentEditalCatalog.orgao,
-          currentEditalCatalog.banca
-        ].map(meaningfulText).filter(Boolean).join("|"),
+        editalKey: editalLogicalKey(),
         edital: {
           nome: currentEditalCatalog.concurso || currentEditalSummary.fileName,
           orgao: currentEditalCatalog.orgao,
@@ -1175,7 +1313,10 @@ async function selectPipelineCargo(profile, button) {
           sourceType: "oficial",
           sourceHash: currentEditalSource?.sourceHash || null,
           sourceVersion: currentEditalSource?.sourceVersion || null,
-          sourceText: editalText
+          sourceText: currentEditalDocuments.length === 1
+            ? editalTextFromPages()
+            : null,
+          sourceMetadata: editalPackageMetadata(analysis)
         },
         catalog: currentEditalCatalog,
         selectedCargo: profile.pipelineCargo,
@@ -1194,7 +1335,15 @@ async function selectPipelineCargo(profile, button) {
     analyzedCargoContexts.set(cargoKey, { context: bootstrap.context, alert: bootstrap.alert });
     applyPersistedEditalContext(bootstrap.context, { preserveFlow: true });
     renderEditalUpdateAlert(bootstrap.alert);
-    setAiReviewStatus("Cargo salvo. Ao reabrir o Hub, estes dados serão restaurados sem repetir a IA.", "success");
+    const conflictCount = Array.isArray(analysis.conflitos)
+      ? analysis.conflitos.length
+      : 0;
+    setAiReviewStatus(
+      conflictCount
+        ? `${conflictCount} conflito(s) documental(is) permanecem sem precedência comprovada. Revise as evidências antes de estudar.`
+        : "Cargo salvo. Ao reabrir o Hub, estes dados serão restaurados sem repetir a IA.",
+      conflictCount ? "warning" : "success"
+    );
 
     const selectedProfile = currentEditalSummary?.cargoProfiles?.[0];
     if (selectedProfile?.subjects?.length) createPlanForCargo(selectedProfile);
@@ -1318,7 +1467,10 @@ function saveManualBank() {
 function initEditalSummarizer() {
   const input = document.querySelector("#editalInput");
   const dropZone = document.querySelector("#editalDropZone");
-  input.addEventListener("change", () => analyzeEditalFile(input.files[0]));
+  input.addEventListener("change", () => {
+    queueEditalFiles(input.files);
+    input.value = "";
+  });
   ["dragenter", "dragover"].forEach(name => dropZone.addEventListener(name, event => {
     event.preventDefault();
     dropZone.classList.add("dragging");
@@ -1327,7 +1479,12 @@ function initEditalSummarizer() {
     event.preventDefault();
     dropZone.classList.remove("dragging");
   }));
-  dropZone.addEventListener("drop", event => analyzeEditalFile(event.dataTransfer.files[0]));
+  dropZone.addEventListener("drop", event => queueEditalFiles(event.dataTransfer.files));
+  document.querySelector("#addEditalDocumentBtn").addEventListener("click", () => input.click());
+  document.querySelector("#analyzeEditalDocumentsBtn").addEventListener(
+    "click",
+    analyzeEditalDocuments
+  );
   document.querySelector("#copySummaryBtn").addEventListener("click", async event => {
     try {
       await copyText(summaryAsText());
@@ -1341,6 +1498,8 @@ function initEditalSummarizer() {
   document.querySelector("#newSummaryBtn").addEventListener("click", () => {
     currentEditalSummary = null;
     currentEditalPages = [];
+    currentEditalDocuments = [];
+    pendingEditalFiles = [];
     currentEditalCatalog = null;
     currentEditalSource = null;
     editalUxStage = "idle";
@@ -1352,6 +1511,7 @@ function initEditalSummarizer() {
     document.querySelector("#editalResults").hidden = true;
     document.querySelector("#editalError").hidden = true;
     document.querySelector("#editalStatus").hidden = true;
+    renderEditalDocumentQueue();
     input.click();
   });
   document.querySelector("#aiReviewBtn").addEventListener("click", reviewSummaryWithGemini);

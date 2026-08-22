@@ -45,6 +45,15 @@ export function sanitizeCatalogSchooling(cargo) {
     escolaridade: valid ? provenLevel : null,
     escolaridadeEvidencia: valid
       ? {
+          ...(cargo?.escolaridadeEvidencia?.documentId
+            ? { documentId: cargo.escolaridadeEvidencia.documentId }
+            : {}),
+          ...(cargo?.escolaridadeEvidencia?.documentName
+            ? { documentName: cargo.escolaridadeEvidencia.documentName }
+            : {}),
+          ...(Number.isInteger(cargo?.escolaridadeEvidencia?.page)
+            ? { page: cargo.escolaridadeEvidencia.page }
+            : {}),
           secao: clean(cargo?.escolaridadeEvidencia?.secao) || null,
           trecho: clean(cargo?.escolaridadeEvidencia?.trecho)
         }

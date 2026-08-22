@@ -128,18 +128,27 @@
         <article class="panel upload-panel">
           <div class="panel-head upload-heading">
             <div><p class="eyebrow">NOVO RESUMO</p><h2>Carregar edital</h2></div>
-            <small class="muted">PDF com até 50 MB</small>
+            <small class="muted">Cada PDF pode ter até 50 MB</small>
           </div>
 
           <label id="editalDropZone" class="upload-zone" for="editalInput">
-            <input id="editalInput" type="file" accept="application/pdf,.pdf" hidden />
+            <input id="editalInput" type="file" accept="application/pdf,.pdf" multiple hidden />
             <span class="upload-icon" aria-hidden="true">↑</span>
-            <strong>Solte o edital aqui ou escolha o arquivo</strong>
-            <span>O PDF fica no navegador; apenas o texto extraído é enviado à IA configurada.</span>
+            <strong>Solte os documentos aqui ou escolha um ou mais PDFs</strong>
+            <span>Os PDFs formam um único pacote e permanecem identificados por documento e página.</span>
           </label>
 
+          <div id="editalDocumentQueue" class="document-queue" hidden>
+            <div class="document-queue-head">
+              <strong>Documentos do pacote</strong>
+              <button id="addEditalDocumentBtn" class="secondary-btn" type="button">Adicionar outro PDF</button>
+            </div>
+            <div id="editalDocumentList" class="document-list"></div>
+            <button id="analyzeEditalDocumentsBtn" class="primary-btn" type="button">Analisar documentos</button>
+          </div>
+
           <label class="official-source-field" for="editalSourceUrl">
-            <span>Link oficial do edital <small>(opcional)</small></span>
+            <span>Link oficial do documento principal <small>(opcional)</small></span>
             <input
               id="editalSourceUrl"
               type="url"
@@ -147,7 +156,7 @@
               placeholder="https://instituicao.gov.br/edital.pdf"
               autocomplete="url"
             />
-            <small>Este endereço permite verificar retificações automaticamente ao abrir o Hub.</small>
+            <small>Você também pode informar uma origem diferente em cada item da lista.</small>
           </label>
 
           <div id="editalStatus" class="analysis-status" aria-live="polite" hidden>
@@ -442,6 +451,7 @@
   <script src="question-bank.js"></script>
   <script src="edital-analyzer.js"></script>
   <script src="edital-ux.js"></script>
+  <script src="edital-package.js"></script>
   <script src="app-config.js"></script>
   <script src="app.js"></script>
 </body>
