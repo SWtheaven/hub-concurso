@@ -4,6 +4,7 @@ Data: 23/08/2026
 Issue: #7 — Pacote documental Multi-PDF  
 Branch: `edital-005-multi-pdf`  
 Baseline de origem: `main` em `f3a633a851bd4f89800d491ffcbfed0707d34ea7`  
+Commit da correção de evidências: `c7e03e1d0be39d461d78c182193950b3e8594235`  
 Estado: correção de escopo de matérias concluída e validada; candidato isolado autorizado, sem cutover.
 
 ## Resultado executivo
@@ -170,13 +171,14 @@ Modelos preservados:
 - Migrations: nenhuma nova migration; `001 → 004` intactas.
 - Worker de produção: não alterado.
 - Frontend atual: não alterado.
-- Deploy candidato: autorizado apenas em ambiente isolado; publicação e smoke registrados em complemento após execução.
+- Deploy candidato: autorizado apenas em ambiente isolado, mas não publicado nesta execução porque `wrangler whoami` confirmou `You are not authenticated`.
+- Preview temporário anônimo: não utilizado, pois não herdaria os secrets/bindings oficiais e não produziria um candidato válido para o teste real.
 - Cutover: proibido e não executado.
 
 ## Próximo gate
 
-1. Publicar a branch e abrir PR draft sem merge.
-2. Com autorização operacional, publicar Worker e frontend em URLs candidatas isoladas.
-3. Repetir smoke mínimo no candidato.
+1. Autenticar o Wrangler na conta Cloudflare oficial.
+2. Criar versão não implantada com alias de preview, sem deslocar tráfego de produção.
+3. Publicar frontend candidato separado apontando para esse preview e repetir smoke mínimo.
 4. Founder executar o teste real com edital dividido em vários PDFs.
 5. Somente após aprovação, retornar ao C.O.; não executar cutover automaticamente.
