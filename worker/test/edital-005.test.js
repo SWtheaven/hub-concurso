@@ -32,6 +32,14 @@ const subjectDocument = makeDocument("doc-b", "Conteudo.pdf", [{
   text: "Conteúdo programático do Cargo 101 - Técnico de Operação: Matemática; Física. Cargo 202 - Analista: Direito."
 }]);
 const emptyDocument = makeDocument("doc-c", "Cronograma.pdf", [{ page: 1, text: "" }]);
+const superiorCargoDocument = makeDocument("doc-superior", "Cargos.pdf", [{
+  page: 11,
+  text: "Cargo 301 - Engenheiro de Software. Escolaridade: Superior."
+}]);
+const superiorSubjectDocument = makeDocument("doc-superior-subjects", "Programas.pdf", [{
+  page: 4,
+  text: "Português — aplicável a todos os cargos de nível superior. Cargo 202 - Analista Jurídico: Direito Administrativo."
+}]);
 
 test("EDITAL-005 normalizes 1, 2 and 3+ PDFs, removes duplicate hashes and keeps empty useful-neutral PDFs", async () => {
   for (const documents of [
@@ -281,6 +289,96 @@ test("EDITAL-005 associates cargo in A with subjects in B and rejects duplicate/
     assert.deepEqual(analyzed.data.result.materias[0].topicos, ["Álgebra"]);
     assert.equal(analyzed.data.result.materias[0].evidencia.documentName, "Conteudo.pdf");
     assert.equal(analyzed.data.result.materias[0].evidencia.page, 3);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("EDITAL-005 accepts a general subject only for the edital-proven cargo level and rejects a foreign specific subject", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async input => {
+    const url = new URL(typeof input === "string" ? input : input.url);
+    if (url.hostname !== "generativelanguage.googleapis.com")
+      throw new Error(`Chamada inesperada: ${url}`);
+    return Response.json({
+      steps: [{
+        type: "model_output",
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            selectedCargo: {
+              codigo: "301",
+              nome: "Engenheiro de Software",
+              especialidade: null,
+              localidade: null,
+              uf: null
+            },
+            requisitos: null,
+            remuneracao: null,
+            prova: null,
+            materias: [
+              {
+                nome: "Português",
+                topicos: [],
+                peso: null,
+                numeroQuestoes: null,
+                evidencia: evidence(
+                  superiorSubjectDocument,
+                  4,
+                  "Português — aplicável a todos os cargos de nível superior"
+                )
+              },
+              {
+                nome: "Direito Administrativo",
+                topicos: [],
+                peso: null,
+                numeroQuestoes: null,
+                evidencia: evidence(
+                  superiorSubjectDocument,
+                  4,
+                  "Cargo 202 - Analista Jurídico: Direito Administrativo"
+                )
+              }
+            ],
+            resumoCargo: null,
+            conflitos: []
+          })
+        }]
+      }]
+    });
+  };
+
+  try {
+    const documents = [superiorCargoDocument, superiorSubjectDocument];
+    const response = await worker.fetch(new Request(
+      "https://worker.test/api/edital/analyze-cargo",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documents,
+          packageHash: await combinedPackageHash(documents.map(item => item.hash)),
+          selectedCargo: {
+            codigo: "301",
+            nome: "Engenheiro de Software",
+            especialidade: null,
+            localidade: null,
+            uf: null,
+            escolaridade: "Superior",
+            escolaridadeEvidencia: evidence(
+              superiorCargoDocument,
+              11,
+              "Cargo 301 - Engenheiro de Software. Escolaridade: Superior"
+            )
+          },
+          regrasGerais: []
+        })
+      }
+    ), { GEMINI_API_KEY: "test", EDITAL_PIPELINE_TRUSTED: true });
+    const data = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(data.result.materias.map(item => item.nome), ["Português"]);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -1796,19 +1796,51 @@ ${editalSource}
           }
         : value;
       const hasEvidence = value => Boolean(value?.evidencia?.trecho);
-      const evidenceMatchesSelectedCargo = value => {
-        const evidenceText = canonical([
-          value?.evidencia?.secao,
-          value?.evidencia?.trecho
-        ].filter(Boolean).join(" "));
+      const evidenceText = evidence => canonical([
+        evidence?.secao,
+        evidence?.trecho
+      ].filter(Boolean).join(" "));
+      const evidenceTextMatchesSelectedCargo = text => {
         const code = canonical(selectedCargo.codigo);
         const name = canonical(selectedCargo.nome);
         return Boolean(
           (code && (
-            evidenceText.includes(`cargo ${code}`) ||
-            evidenceText.includes(`codigo ${code}`)
+            text.includes(`cargo ${code}`) ||
+            text.includes(`codigo ${code}`)
           )) ||
-          (name && name.length >= 6 && evidenceText.includes(name))
+          (name && name.length >= 6 && text.includes(name))
+        );
+      };
+      const schoolingEvidence = sanitizeDocumentEvidence(
+        cargoInput.escolaridadeEvidencia,
+        documentPackage
+      );
+      const schooling = sanitizeCatalogSchooling({
+        ...selectedCargo,
+        escolaridade: textOrNull(cargoInput.escolaridade),
+        escolaridadeEvidencia: schoolingEvidence
+      });
+      const provenSchooling = evidenceTextMatchesSelectedCargo(
+        evidenceText(schooling.escolaridadeEvidencia)
+      )
+        ? canonical(schooling.escolaridade)
+        : null;
+      const evidenceMatchesSelectedCargo = value => {
+        const itemEvidenceText = evidenceText(value?.evidencia);
+        if (evidenceTextMatchesSelectedCargo(itemEvidenceText)) return true;
+
+        const subject = canonical(value?.nome);
+        const appliesToAllCargos = /\btodos os cargos\b/.test(itemEvidenceText);
+        const appliesToProvenLevel = provenSchooling && (
+          itemEvidenceText.includes(`nivel ${provenSchooling}`) ||
+          itemEvidenceText.includes(`ensino ${provenSchooling}`)
+        );
+
+        return Boolean(
+          subject &&
+          itemEvidenceText.includes(subject) &&
+          appliesToAllCargos &&
+          appliesToProvenLevel
         );
       };
 

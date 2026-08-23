@@ -1,10 +1,10 @@
 # HUB-002 — EDITAL-005 — Relatório técnico
 
-Data: 22/08/2026  
+Data: 23/08/2026  
 Issue: #7 — Pacote documental Multi-PDF  
 Branch: `edital-005-multi-pdf`  
 Baseline de origem: `main` em `f3a633a851bd4f89800d491ffcbfed0707d34ea7`  
-Estado: implementação e regressão local concluídas; deploy candidato e teste real ainda pendentes.
+Estado: correção de escopo de matérias concluída e validada; candidato isolado autorizado, sem cutover.
 
 ## Resultado executivo
 
@@ -12,7 +12,14 @@ O Hub agora aceita um ou vários PDFs como um pacote lógico único. Cada PDF ma
 
 Não foi criada migration e nenhuma alteração foi aplicada ao Supabase real. O manifesto, as evidências, os snapshots por página e os conflitos usam o campo JSONB `editais.metadata` e os campos JSONB de evidência já existentes.
 
-O fluxo P0 e o UX-001 foram preservados. A regressão automatizada terminou com **33/33 testes aprovados** e o dry-run do Worker foi aprovado com `QUESTIONS_TERMS_ACCEPTED="false"`.
+O fluxo P0 e o UX-001 foram preservados. A regressão automatizada terminou com **34/34 testes aprovados** e o dry-run do Worker foi aprovado com `QUESTIONS_TERMS_ACCEPTED="false"`.
+
+Em 23/08/2026, a auditoria identificou que `evidenceMatchesSelectedCargo` rejeitava matéria geral quando a evidência não repetia o nome/código do cargo. A correção preserva dois caminhos estritos:
+
+- matéria específica: exige vínculo literal com código ou nome do cargo selecionado;
+- matéria geral por nível: exige escolaridade do cargo comprovada por evidência literal ligada ao próprio cargo, nome da matéria no trecho e abrangência explícita a todos os cargos daquele nível.
+
+Sem prova literal da escolaridade do cargo, a regra geral por nível é rejeitada. Não há inferência externa.
 
 ## Arquitetura escolhida
 
@@ -23,7 +30,7 @@ O fluxo P0 e o UX-001 foram preservados. A regressão automatizada terminou com 
 5. O frontend envia ao Worker uma estrutura `documents[]`; nenhum texto global concatenado ou truncado é criado para o fluxo Multi-PDF.
 6. O Worker valida o pacote, preserva documento/página e envia o pacote estruturado ao modelo Gemini já aprovado.
 7. Toda evidência Multi-PDF só é aceita quando documento, página e trecho literal existem no pacote recebido.
-8. O catálogo é deduplicado por identidade do cargo. As matérias são deduplicadas e filtradas pela identidade explícita do cargo selecionado.
+8. O catálogo é deduplicado por identidade do cargo. As matérias são deduplicadas e filtradas pela identidade explícita do cargo ou por abrangência geral do nível, somente quando cargo, nível, matéria e abrangência estão comprovados literalmente.
 9. Manifesto, snapshots por documento/página e conflitos são persistidos em `editais.metadata`.
 10. A verificação EDITAL-004 consulta cada origem disponível com ETag/Last-Modified e hash. Documento sem URL fica explicitamente como não verificável e não gera revisão falsa.
 
@@ -119,7 +126,8 @@ O `editais.source_hash` recebe o hash do pacote. As tabelas e migrations `001 �
 | 10 | planner | ✅ PASSOU | LIST/ADD/DELETE por usuário+edital+cargo+matéria |
 | 11 | reidratação | ✅ PASSOU | manifesto e cargo/matérias restaurados do JSONB |
 | 12 | EDITAL-004 sem revisão falsa | ✅ PASSOU | pacote idêntico: 0 nova revisão; ETag evita novo GET |
-| 13 | regressão completa P0 | ✅ PASSOU | suíte completa 33/33 |
+| 13 | regressão completa P0 | ✅ PASSOU | suíte completa 34/34 |
+| 14 | matéria geral por nível comprovado | ✅ PASSOU | Engenheiro de Software comprovadamente Superior recebe Português aplicável a todos os cargos de nível superior; Direito Administrativo do Cargo 202 é rejeitado |
 
 ## Comandos e resultados
 
@@ -128,14 +136,14 @@ node --check app.js
 node --check worker/src/edital-pipeline.js
 node --test ...
 
-tests 33
-pass 33
+tests 34
+pass 34
 fail 0
 ```
 
 ```text
 wrangler 4.123.0 deploy --dry-run
-Total Upload: 140.39 KiB / gzip: 32.44 KiB
+Total Upload: 142.35 KiB / gzip: 32.86 KiB
 QUESTIONS_TERMS_ACCEPTED = "false"
 Resultado: aprovado; nenhum deploy executado.
 ```
@@ -151,7 +159,7 @@ Modelos preservados:
 
 - O teste real com PDFs oficiais divididos ainda é obrigatório; fixtures não substituem o gate do Founder.
 - Pacotes muito extensos continuam sujeitos aos limites de requisição/memória do provedor, embora o código não aplique corte global de caracteres.
-- Evidência Multi-PDF é intencionalmente estrita: trecho que não exista literalmente na página é descartado para evitar invenção.
+- Evidência Multi-PDF é intencionalmente estrita: trecho que não exista literalmente na página é descartado; matéria geral só entra quando sua abrangência e o nível do cargo estão comprovados no edital.
 - Documento sem URL oficial pode ser analisado e persistido, mas sua alteração remota não pode ser verificada; o estado fica explícito e não cria revisão falsa.
 - Quando um PDF remoto muda, a revisão objetiva indica impactos como indeterminados até revisão. Nenhum motor jurídico foi criado e nenhuma precedência é inventada.
 - O armazenamento do texto integral por página em JSONB pode aumentar o tamanho da linha para pacotes grandes; deverá ser observado no teste real, sem reestruturar o banco neste ciclo.
@@ -162,7 +170,7 @@ Modelos preservados:
 - Migrations: nenhuma nova migration; `001 → 004` intactas.
 - Worker de produção: não alterado.
 - Frontend atual: não alterado.
-- Deploy candidato: pendente de autorização operacional imediata.
+- Deploy candidato: autorizado apenas em ambiente isolado; publicação e smoke registrados em complemento após execução.
 - Cutover: proibido e não executado.
 
 ## Próximo gate
