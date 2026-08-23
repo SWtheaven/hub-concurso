@@ -135,6 +135,15 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .upload-zone:hover, .upload-zone.dragging { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
 .upload-zone strong { color: var(--text); }
 .upload-zone > span:last-child { font-size: 13px; }
+.document-queue { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
+.document-queue-head { margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.document-list { display: grid; gap: 9px; margin-bottom: 12px; }
+.document-item { padding: 11px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; border: 1px solid #d8e3dd; border-radius: 11px; background: var(--surface); }
+.document-item strong { min-width: 0; overflow-wrap: anywhere; }
+.document-item small { color: var(--muted); }
+.document-item input { grid-column: 1 / -1; min-height: 40px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: #fff; font: inherit; font-size: 13px; }
+.document-remove { align-self: start; }
+.document-queue > .primary-btn { width: 100%; }
 .official-source-field { display: grid; gap: 7px; margin-top: 14px; color: var(--text); font-size: 13px; font-weight: 700; }
 .official-source-field span small { color: var(--muted); font-weight: 500; }
 .official-source-field input { width: 100%; min-height: 46px; padding: 0 13px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: var(--surface); font: inherit; font-weight: 500; }

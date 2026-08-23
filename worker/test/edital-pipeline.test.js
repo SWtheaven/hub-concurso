@@ -506,6 +506,128 @@ assert.equal(withoutOfficialSource.data.changed, false);
 assert.equal(withoutOfficialSource.data.alert, null);
 assert.equal(aiCalls, 1);
 
+// EDITAL-005: o pacote verifica cada origem e não cria revisão falsa.
+const trackedHash = hashSource(sourceVersions[2].content);
+const offlineHash = hashSource("ANEXO COMPLEMENTAR SEM URL OFICIAL");
+const packageHash = hashSource([trackedHash, offlineHash].sort().join("\n"));
+tables.editais[0].source_hash = packageHash;
+tables.editais[0].metadata = {
+  document_manifest: [
+    {
+      id: "doc-edital",
+      name: "Edital.pdf",
+      hash: trackedHash,
+      sourceUrl: "https://petro-source.test/editais/2026.txt",
+      pageCount: 1
+    },
+    {
+      id: "doc-anexo",
+      name: "Anexo.pdf",
+      hash: offlineHash,
+      sourceUrl: null,
+      pageCount: 1
+    }
+  ]
+};
+const revisionsBeforePackageCheck = tables.edital_revisions.length;
+const getsBeforePackageCheck = sourceGetCalls;
+const unchangedPackage = await callWorker("/api/edital/check-source", {
+  method: "POST",
+  body: {}
+});
+assert.equal(unchangedPackage.data.state, "sem_alteracao");
+assert.equal(unchangedPackage.data.changed, false);
+assert.equal(unchangedPackage.data.alert, null);
+assert.equal(tables.edital_revisions.length, revisionsBeforePackageCheck);
+assert.equal(sourceGetCalls, getsBeforePackageCheck + 1);
+assert.equal(
+  unchangedPackage.data.documents.find(item => item.id === "doc-anexo").state,
+  "sem_fonte_oficial"
+);
+
+const cachedPackageCheck = await callWorker("/api/edital/check-source", {
+  method: "POST",
+  body: {}
+});
+assert.equal(cachedPackageCheck.data.changed, false);
+assert.equal(sourceGetCalls, getsBeforePackageCheck + 1);
+assert.equal(tables.edital_revisions.length, revisionsBeforePackageCheck);
+
+// Alterar uma única origem altera o hash combinado e cria uma única revisão objetiva.
+activeSourceVersion = 1;
+const changedPackage = await callWorker("/api/edital/check-source", {
+  method: "POST",
+  body: {}
+});
+assert.equal(changedPackage.data.state, "alterado");
+assert.equal(changedPackage.data.changed, true);
+assert.equal(changedPackage.data.alert.type, "edital_changed");
+assert.equal(tables.edital_revisions.length, revisionsBeforePackageCheck + 1);
+assert.equal(aiCalls, 1);
+assert.equal(
+  tables.editais[0].source_hash,
+  hashSource([hashSource(sourceVersions[1].content), offlineHash].sort().join("\n"))
+);
+
+// Persistência e reidratação do manifesto Multi-PDF usam o JSONB já existente.
+const multiPayload = structuredClone(payload);
+multiPayload.editalKey = "petro-xyz-multi-pdf";
+multiPayload.edital.nome = "PROCESSO SELETIVO PETRO XYZ — PACOTE DOCUMENTAL";
+multiPayload.edital.sourceUrl = null;
+multiPayload.edital.sourceHash = packageHash;
+multiPayload.edital.sourceText = null;
+multiPayload.edital.sourceMetadata = {
+  package_hash: packageHash,
+  document_manifest: [
+    {
+      id: "doc-edital",
+      name: "Edital.pdf",
+      hash: trackedHash,
+      sourceUrl: null,
+      pageCount: 1
+    },
+    {
+      id: "doc-anexo",
+      name: "Conteudo.pdf",
+      hash: offlineHash,
+      sourceUrl: null,
+      pageCount: 1
+    }
+  ],
+  document_snapshots: [
+    {
+      id: "doc-edital",
+      name: "Edital.pdf",
+      hash: trackedHash,
+      sourceUrl: null,
+      pages: [{ page: 1, text: "Cargo 101 - Técnico de Operação" }]
+    },
+    {
+      id: "doc-anexo",
+      name: "Conteudo.pdf",
+      hash: offlineHash,
+      sourceUrl: null,
+      pages: [{ page: 1, text: "Cargo 101 - Matemática" }]
+    }
+  ]
+};
+const persistedPackage = await persist(multiPayload);
+assert.equal(persistedPackage.response.status, 200);
+assert.equal(tables.editais.length, 2);
+const packageRow = tables.editais.find(
+  row => row.id === persistedPackage.data.edital.id
+);
+assert.equal(packageRow.source_hash, packageHash);
+assert.equal(packageRow.metadata.document_manifest.length, 2);
+assert.equal(packageRow.metadata.document_snapshots[1].pages[0].page, 1);
+const rehydratedPackage = await callWorker(
+  `/api/edital/current?editalId=${encodeURIComponent(packageRow.id)}`
+);
+assert.equal(rehydratedPackage.data.state, "rehydrated");
+assert.equal(rehydratedPackage.data.context.edital.metadata.document_manifest.length, 2);
+assert.equal(rehydratedPackage.data.context.selectedCargo.codigo, "101");
+assert.equal(rehydratedPackage.data.context.materias.length, 4);
+
 const source = await readFile(
   new URL("../src/edital-pipeline.js", import.meta.url),
   "utf8"

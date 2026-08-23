@@ -7,8 +7,8 @@
     "dev": "wrangler dev --config wrangler.local.jsonc",
     "deploy": "wrangler deploy",
     "check": "wrangler deploy --dry-run",
-    "test": "node --test test/worker.test.js test/edital-pipeline.test.js test/frontend-integration.test.js test/baseline-contract.test.js test/ux-001.test.js",
-    "test:deploy": "node --test test/worker.test.js test/edital-pipeline.test.js test/frontend-integration.test.js test/baseline-contract.test.js test/ux-001.test.js"
+    "test": "node --test test/worker.test.js test/edital-pipeline.test.js test/frontend-integration.test.js test/baseline-contract.test.js test/ux-001.test.js test/edital-005.test.js",
+    "test:deploy": "node --test test/worker.test.js test/edital-pipeline.test.js test/frontend-integration.test.js test/baseline-contract.test.js test/ux-001.test.js test/edital-005.test.js"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
